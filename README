@@ -1,8 +1,11 @@
-                                   NOTRAP
-                +--------------------------------------------+
+                                 +--------+
+                                 | NOTRAP |
+                +----------------+--------+------------------+
                 |         The OS Independence Layer          |
                 | Freeing you from OS dependence since 2013! |
-                +--------------------------------------------+
+                +--------+-------------------------+---------+
+					          | Be the best you can Be! |
+                         +-------------------------+
 
 Motivation: Since each OS has it's own set if idiosyncracies, incompatibilities,
 and general unfriendliness, here we present a library to abstract all that
@@ -11,5 +14,5 @@ away.
 For example, snprintf() returns a different value on Windows than on Linux.
 How to deal with that situation? Call the NOTRAP version of snprintf(),
 NOPsnprintf(), and you are guaranteed that it will return the same value on any 
-platform.
+platform. NOP can stand for no-platform, or no-problem, or no-trap.
 
