@@ -2,9 +2,10 @@
 #define NOTRAP_H
 
 /*************************************************************************
- * This is the primary header file for NOTRAP.
- * It defines all the functions available, and for some platforms,
- * defines macros because we don't need a full function call.
+ * This is the primary header file for NOTRAP. It should be all
+ * that the user needs to include. Here are defined all the functions 
+ * available, though for some platforms we use macros since there
+ * are not huge differences.
  *
  * We use #ifdefs to make sure code only gets compiled for the various
  * platforms.
@@ -21,7 +22,9 @@
 
 
 /**********************************************************************
- * Section for Networking functions
+ * Section for Networking functions.
+ * Networking is tough, because there are more differences here than
+ * with most other types of functions.
  *********************************************************************/
 //various includes
 #ifdef NOP_OSX
