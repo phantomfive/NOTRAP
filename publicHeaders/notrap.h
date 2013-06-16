@@ -21,7 +21,12 @@
 
 #ifdef __APPLE__
 #define NTP_OSX 1
-#include "notrap_osx.h"
+#include <notrap/notrap_osx.h>
+#endif
+
+#define STDLIB_AVAILABLE
+#ifdef STDLIB_AVAILABLE
+#include <notrap/notrap_stdlib.h>
 #endif
 
 
@@ -37,38 +42,6 @@
 #ifndef FALSE
 #define FALSE 0
 #endif
-
-/**********************************************************************
- * Section for various standard functions.
- * Believe it or not, some platforms don't even suppor the standard
- * library exactly.
- **********************************************************************/
-//various includes
-#ifdef NTP_OSX
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#define NTPmalloc malloc
-#define NTPstrlen strlen
-#define NTPmemcpy memcpy
-#define NTPstrcpy strcpy
-#endif
-
-/**********************************************************************
- * Section for Networking functions.
- * Networking is tough, because there are more differences here than
- * with most other types of functions.
- *********************************************************************/
-
-
-
-
-
-
-
-
-
-
 
 #endif
 
