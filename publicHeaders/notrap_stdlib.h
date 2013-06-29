@@ -10,11 +10,13 @@
 //various includes
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <stdio.h>
 #define NTPmalloc malloc
 #define NTPstrlen strlen
 #define NTPmemcpy memcpy
 #define NTPstrcpy strcpy
+#define NTPstrcmp strcmp
 
 
 
