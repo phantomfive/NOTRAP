@@ -13,6 +13,6 @@ away.
 
 For example, snprintf() returns a different value on Windows than on Linux.
 How to deal with that situation? Call the NOTRAP version of snprintf(),
-NOPsnprintf(), and you are guaranteed that it will return the same value on any 
-platform. NOP can stand for no-platform, or no-problem, or no-trap.
+NTPsnprintf(), and you are guaranteed that it will return the same value on any 
+platform. NTP stands for no trap.
 
