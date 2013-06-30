@@ -154,7 +154,7 @@ typedef NTPLock struct NTPLock_struct;
  * }
  *
  * 
- * //later on, to create the thread,
+ * //earlier on, to create the new thread,
  *    if(NTPStartThread( &myRoutine, NULL )) {
  *       //success!
  *    }
@@ -168,7 +168,7 @@ NTPLock *NTPNewLock();
 void NTPFreeLock(NTPLock **lock);
 
 /**Acquires the lock. Blocks until successful.*/
-void NTPAcquireLock(NTPLock *lock);
+BOOL NTPAcquireLock(NTPLock *lock);
 
 /**Releases a lock. */
 void NTPReleaseLock(NTPLock *lock);
