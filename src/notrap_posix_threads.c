@@ -51,7 +51,9 @@ BOOL NTPAcquireLock(NTPLock *lock) {
 	if(pthread_mutex_lock(&lock->mutex)!=0) {
 		//errors are so rare here, I almost don't
 		//want to force users to check them.
-		//What will they do exactly?
+		//What will they do exactly? But you can't
+		//write super-stable software if your locks
+		//are leaking, so...........
 		return FALSE;
 	}
 	return TRUE;
