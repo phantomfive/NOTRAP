@@ -107,6 +107,14 @@ void NTPDisconnect(NTPSock **sock) {
 }
 
 
+NTPSock*NTPListen(uint16_t port) {
+
+}
+
+NTPSock*NTPAccept(NTPSock *listenPort) {
+
+}
+
 //------------------------------------------------------------------
 // Status methods
 //------------------------------------------------------------------

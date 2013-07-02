@@ -98,6 +98,13 @@ const char*NTPSockErr(NTPSock*sock);
  * Sets *sock to NULL.*/
 void NTPDisconnect(NTPSock **sock);
 
+/**Begins listening on a local port for incoming connections*/
+NTPSock*NTPListen(uint16_t port);
+
+/**Waits to accept a connection on a listening port.
+ * Resources must be freed later by calling NTPDisconnect() */
+NTPSock*NTPAccept(NTPSock *listenPort);
+
 /**Sends bytes over the socket.
  * Returns the number of bytes written, or -1 if there is
  * an error. Not all bytes are guaranteed to be written.*/
