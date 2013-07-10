@@ -5,6 +5,8 @@
 #include <sys/socket.h>
 #include <netdb.h>
 
+const char *CONNECTING_ERR_MSG = "Waiting for connect.....";
+
 struct NTPSock_struct {
 	int sock;
 	char destination[5000];
@@ -123,21 +125,31 @@ SIGNAL_CONNECTION_COMPLETE:
 	} NTPReleaseLock(sock->connectLock);
 }
 
-
-NTPSock *NTPConnectTCP(const char *destination) {
+/**Allocates memory for an NTPSock and fills it in with some
+ * good defaults.*/
+static NTPSock *allockNTPSock(const char *destination, uint16_t port) {
 	NTPSock *rv = (NTPSock*)malloc(sizeof(NTPSock));
+	if(rv!=NULL) {
+		rv->sock = -1;
+		rv->port = port;
+		rv->connectError = FALSE;
+		rv->shouldInterruptConnect = NO;
+		rv->doingConnect = YES;
+		strncpy(rv->destination, destination, sizeof(rv->destination)-1);
+		rv->destination[sizeof(rv->destination)-1] = 0;
+		strcpy(rv->errMsg, "No error, yet");
+	}
+	return rv;
+}
+
+
+NTPSock *NTPConnectTCP(const char *destination, uint16_t port) {
+	NTPSock *rv = allocNTPSock(destination);
 	if(rv==NULL) goto ERR_NO_MEM;
 
 	rv->connectLock = NTPNewLock();
 	if(rv->connectLock==NULL) goto ERR_CONNECT_LOCK;
 
-	//initialize our struct
-	rv->sock = -1;
-	rv->error = FALSE;
-	rv->shouldInterruptConnect = YES;
-	rv->doingConnect = YES;
-	strncpy(rv->destination, destination, sizeof(rv->destination)-1);
-	rv->destination[sizeof(rv->destination)-1] = 0;
 
 	//begin the asynchronous connect
 	if(!NTPStartThread(doLookupAndConnectInSeparateThread,rv))
@@ -188,7 +200,9 @@ void NTPDisconnect(NTPSock **sock) {
 
 
 NTPSock*NTPListen(uint16_t port) {
-
+	NTPSock *rv = allocNTPSock("", port);
+	if(rv==NULL) return NULL;
+	
 }
 
 NTPSock*NTPAccept(NTPSock *listenPort) {
@@ -203,6 +217,11 @@ int NTPSockStatus(NTPSock *sock) {
 }
 
 const char*NTPSockErr(NTPSock*sock) {
+	if(sock->doingConnect) 
+		return CONNECTING_ERR_MSG;
+	
+	else
+		return sock->errMsg;
 
 }
 
