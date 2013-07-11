@@ -25,6 +25,9 @@ struct NTPSock_struct {
 
 	//True if there was an error while connecting
 	BOOL connectError;
+
+	//True if there was an error while trying to listen on a port
+	BOOL listenError;
 	
 	//indicates NTPDisconnect() was called while the connect
 	//thread was running
@@ -127,14 +130,15 @@ SIGNAL_CONNECTION_COMPLETE:
 
 /**Allocates memory for an NTPSock and fills it in with some
  * good defaults.*/
-static NTPSock *allockNTPSock(const char *destination, uint16_t port) {
+static NTPSock *allocNTPSock(const char *destination, uint16_t port) {
 	NTPSock *rv = (NTPSock*)malloc(sizeof(NTPSock));
 	if(rv!=NULL) {
 		rv->sock = -1;
 		rv->port = port;
 		rv->connectError = FALSE;
-		rv->shouldInterruptConnect = NO;
-		rv->doingConnect = YES;
+		rv->listenError  = FALSE;
+		rv->shouldInterruptConnect = FALSE;
+		rv->doingConnect = FALSE;
 		strncpy(rv->destination, destination, sizeof(rv->destination)-1);
 		rv->destination[sizeof(rv->destination)-1] = 0;
 		strcpy(rv->errMsg, "No error, yet");
@@ -152,6 +156,7 @@ NTPSock *NTPConnectTCP(const char *destination, uint16_t port) {
 
 
 	//begin the asynchronous connect
+	rv->doingConnect = FALSE;
 	if(!NTPStartThread(doLookupAndConnectInSeparateThread,rv))
 		goto ERR_START_THREAD;
 	
@@ -200,12 +205,54 @@ void NTPDisconnect(NTPSock **sock) {
 
 
 NTPSock*NTPListen(uint16_t port) {
+	struct sockaddr_storage their_addr;
+	socklen_t addr_size;
+	struct addrinfo hints, *servinfo, *p;
+	int ev;
+
 	NTPSock *rv = allocNTPSock("", port);
 	if(rv==NULL) return NULL;
 	
+	
+	memset(&hints, 0, 0, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_PASSIVE;
+	if((ev=getaddrinfo(NULL, port, &hints, &servinfo))!=0) {
+		rv->listenError = TRUE;
+		snprintf(rv->errMsg, sizeof(rv->errMsg), "GetAddrInfo Err, %s",
+		         gai_strerror(ev));
+		return rv;
+	}
+
+	rv->sock = -1;
+	for(p=servinfo; p!=NULL; p = p->ai_next) {
+		if((rv->sock = socket(p->ai_family, p->ai_socktype, p->ai_protocol))<0) {
+			snprintf(rv->errMsg, sizeof(rv->errMsg), "Socket not created, %s",
+			         strerror(errno));
+			continue;
+		}
+
+		if(bind(rv->sock, p->ai_addr, p->ai_addrlen) <0) {
+			snprintf(rv->errMsg, sizeof(rv->errMsg), "Couldn't bind, %s",
+			         strerror(errno));
+			close(rv->sock);
+			rv->sock = -1;
+			continue;
+		}
+
+		break;
+	}
+
+	freeaddrinfo(servinfo);
+	if(rv->sock==-1) {
+		rv->listenError = TRUE;
+	}
+	return rv;
 }
 
-NTPSock*NTPAccept(NTPSock *listenPort) {
+
+NTPSock *NTPAccept(NTPSock *listenPort) {
 
 }
 
@@ -222,7 +269,6 @@ const char*NTPSockErr(NTPSock*sock) {
 	
 	else
 		return sock->errMsg;
-
 }
 
 
