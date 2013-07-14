@@ -5,7 +5,11 @@
 #include <sys/socket.h>
 #include <netdb.h>
 
-const char *CONNECTING_ERR_MSG = "Waiting for connect.....";
+static const char *CONNECTING_ERR_MSG = "Waiting for connect.....";
+
+//------------------------------------------------------------------
+// Our data structures
+//------------------------------------------------------------------
 
 struct NTPSock_struct {
 	int sock;
