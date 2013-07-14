@@ -22,6 +22,8 @@ struct NTPSock_struct {
 	//while this is true.
 	volatile BOOL doingConnect;
 
+	//True if this is a server socket, used for listening
+	BOOL listenSock; 
 
 	//True if there was an error while connecting
 	BOOL connectError;
@@ -133,11 +135,12 @@ SIGNAL_CONNECTION_COMPLETE:
 static NTPSock *allocNTPSock(const char *destination, uint16_t port) {
 	NTPSock *rv = (NTPSock*)malloc(sizeof(NTPSock));
 	if(rv!=NULL) {
-		rv->sock = -1;
-		rv->port = port;
+		rv->shouldInterruptConnect = FALSE;
+		rv->sock         = -1   ;
+		rv->port         = port ;
 		rv->connectError = FALSE;
 		rv->listenError  = FALSE;
-		rv->shouldInterruptConnect = FALSE;
+		rv->listenSock   = FALSE;
 		rv->doingConnect = FALSE;
 		strncpy(rv->destination, destination, sizeof(rv->destination)-1);
 		rv->destination[sizeof(rv->destination)-1] = 0;
@@ -212,7 +215,7 @@ NTPSock*NTPListen(uint16_t port) {
 
 	NTPSock *rv = allocNTPSock("", port);
 	if(rv==NULL) return NULL;
-	
+	rv->listenSock = TRUE;
 	
 	memset(&hints, 0, 0, sizeof(hints));
 	hints.ai_family = AF_UNSPEC;
@@ -252,8 +255,30 @@ NTPSock*NTPListen(uint16_t port) {
 }
 
 
-NTPSock *NTPAccept(NTPSock *listenPort) {
+NTPSock *NTPAccept(NTPSock *listenSock) {
+	int acceptedSock;
+	struct sockaddr address;
+	NTPSock *rv;
+	socklen_t address_len;
 
+	if(sock->doingConnect)
+		return NULL;
+	
+	acceptedSock = accept(listenSock->sock, &address, &address_len);
+	if(acceptedSock<0) {
+		snprintf(sock->errMsg,sizeof(sock->errMsg),"accepting, %s",strerror(errno));
+		return NULL;
+	}
+	
+	rv = allocNTPSock("", -1);
+	if(rv==NULL) {
+		snprintf(sock->errMsg, sizeof(sock->errMsg), "no memory");
+		close(acceptedSock);
+		return NULL;
+	}
+
+	rv->sock = acceptedSock;
+	return rv;
 }
 
 //------------------------------------------------------------------
@@ -261,6 +286,21 @@ NTPSock *NTPAccept(NTPSock *listenPort) {
 //------------------------------------------------------------------
 int NTPSockStatus(NTPSock *sock) {
 
+	//test for errors first
+	if(sock->connectError || sock->listenError) {
+		return NTPSOCK_ERROR;
+	}
+
+	//If we get here, we're not in an error state (yet)
+	else if(sock->doingConnect) {
+		return NTPSOCK_CONNECTING;
+	}
+	else if(sock->listenSock) {
+		return NTPSOCK_LISTENING;
+	}
+	else {
+		return NTPSOCK_CONNECTED;
+	}
 }
 
 const char*NTPSockErr(NTPSock*sock) {

@@ -87,7 +87,8 @@ NTPSock *NTPConnectTCP(const char *destination);
 //Returns one of the following:
 #define NTPSOCK_CONNECTING   1 //If it is still connecting
 #define NTPSOCK_CONNECTED    2 //If it has connected
-#define NTPSOCK_ERROR        3 //If there was an error. Call NTPSockErr()
+#define NTPSOCK_LISTENING    3 //If the socket is listening
+#define NTPSOCK_ERROR        4 //If there was an error. Call NTPSockErr()
                                //For a string representation of the error.
 int NTPSockStatus(NTPSock *sock); 
 
@@ -103,7 +104,7 @@ NTPSock*NTPListen(uint16_t port);
 
 /**Waits to accept a connection on a listening port.
  * Resources must be freed later by calling NTPDisconnect() */
-NTPSock*NTPAccept(NTPSock *listenPort);
+NTPSock*NTPAccept(NTPSock *listenSock);
 
 /**Sends bytes over the socket.
  * Returns the number of bytes written, or -1 if there is
