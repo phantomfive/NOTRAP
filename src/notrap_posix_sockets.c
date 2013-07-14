@@ -270,8 +270,10 @@ NTPSock *NTPAccept(NTPSock *listenSock) {
 	NTPSock *rv;
 	socklen_t address_len;
 
-	if(sock->doingConnect)
+	if(!sock->listenSock) {
+		snprintf(sock->errMsg, sizeof(sock->errMsg), "Socket is not listening");
 		return NULL;
+	}
 	
 	acceptedSock = accept(listenSock->sock, &address, &address_len);
 	if(acceptedSock<0) {
