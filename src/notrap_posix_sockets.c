@@ -44,8 +44,9 @@ struct NTPSock_struct {
 };
 
 
+
 //------------------------------------------------------------------
-// Functions for connecting and disconnecting
+// Functions for doing DNS Lookup. This is insane
 //------------------------------------------------------------------
 
 //There's no reasonable way to do DNS lookups in a non-blocking way,
@@ -129,6 +130,10 @@ SIGNAL_CONNECTION_COMPLETE:
 	
 	} NTPReleaseLock(sock->connectLock);
 }
+
+//------------------------------------------------------------------
+// Functions for connecting and disconnecting
+//------------------------------------------------------------------
 
 /**Allocates memory for an NTPSock and fills it in with some
  * good defaults.*/
