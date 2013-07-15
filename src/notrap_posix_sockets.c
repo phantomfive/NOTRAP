@@ -327,11 +327,28 @@ const char*NTPSockErr(NTPSock*sock) {
 // Methods for sending and receiving
 //------------------------------------------------------------------
 int NTPSend(NTPSock *sock, void *bytes, int len) {
+	int rv;
 
+	if(sock->doingConnect) return -1;
+
+	if((rv=send(sock->sock, bytes, len, 0))<0) {
+		snprintf(sock->errMsg, sizeof(sock->errMsg),"sending, %s",strerror(errno));
+		return -1;
+	}
+
+	return rv;
 }
 
 int NTPRecv(NTPSock *sock, void *buf, int len) {
+	int rv;
+	if(sock->doingConnect) return -1;
 
+	if((rv=recv(sock->sock, buf, len, 0))<0) {
+		snprintf(sock->errMsg,sizeof(sock->errMsg),"recving, %s",strerror(errno));
+		return -1;
+	}
+
+	return rv;
 }
 
 //------------------------------------------------------------------
