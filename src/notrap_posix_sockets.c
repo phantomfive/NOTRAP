@@ -1,3 +1,10 @@
+/******************************************************************
+ * notrap_posix_sockets.c                                         *
+ * Prepare yourself, networking code is always ugly. But the      *
+ * organization should be clear from the header file.             *
+ * -AT Copyright 2013 Usable under the GPL 3.0 or later           *
+ ******************************************************************/
+
 #include <notrap/notrap.h>
 #ifdef NTP_POSIX_THREADS
 
