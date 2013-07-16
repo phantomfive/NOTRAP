@@ -355,18 +355,32 @@ int NTPRecv(NTPSock *sock, void *buf, int len) {
 // Methods for select
 //------------------------------------------------------------------
 struct NTP_FD_SET_struct {
+	fd_set set;
+	uint16_t max;
+};
 
+void NTP_ZERO_SET(NTP_FD_SET *set) {
+	memset(set, 0, sizeof(NTP_FD_SET_struct));
 }
-void NTP_FD_ADD(NTPSock *sock, NTP_FD_SET *set) {
 
+void NTP_FD_ADD(NTPSock *sock, NTP_FD_SET *set) {
+	FD_SET(sock->sock, set->set);
+	if(sock->sock>set->max) 
+		set->max = sock->sock;
 }
 
 BOOL NTP_FD_ISSET(NTPSock *sock, NTP_FD_SET *set) {
-
+	return (BOOL)FD_ISSET(sock->sock, set->set);
 }
 
 int NTPSelect(NTP_FD_SET *readSet, NTP_FD_SET *writeSet, int timeoutMS) {
+	struct timeval tv;
+	int max = (readSet->max>writeSet->max) ? readSet->max : writeSet->max;
 
+	tv->tv_sec  = timeoutMS / 1000;
+	tv->tv_usec = (timeoutMS%1000)*1000;
+
+	return select(max + 1, &readSet->set, &writeSet->set, NULL, &tv);
 }
 
 

@@ -120,11 +120,13 @@ int NTPRecv(NTPSock *sock, void *buf, int len);
 typedef NTP_FD_SET struct NTP_FD_SET_struct;
 void NTP_FD_ADD(NTPSock *sock, NTP_FD_SET *set);
 BOOL NTP_FD_ISSET(NTPSock *sock, NTP_FD_SET *set);
+//clears a NTP_FD_SET()
+void NTP_ZERO_SET(NTP_FD_SET *set);
 
 /**The way to use this:
  * Create a write set. Add NTPSocks to the write set using NTP_FD_ADD()
  * Create a read set.  Add NTPSocks to the read  set using NTP_FD_ADD()
- * Call this function with a timeout.
+ * Call NTPSelect() with a timeout.
  *
  * As soon as one of sockets in readSet has data available for reading,
  * or one of the sockets in writeSet has space available for writing,
@@ -132,6 +134,8 @@ BOOL NTP_FD_ISSET(NTPSock *sock, NTP_FD_SET *set);
  *
  * To find out if a socket has data available for reading, or space 
  * available for writing, call NTP_FD_ISSET().
+ *
+ * Be sure to call NTP_ZERO_SET() to clear the sets before calling NTP_FD_ADD()
  *
  * RETURNS: a negative number on error (call NTPSockErr() to find out which
  * error), a positive number on success, or 0 on timeout. 
