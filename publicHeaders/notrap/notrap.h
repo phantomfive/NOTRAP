@@ -70,7 +70,7 @@
  * doesn't have true POSIX networking. So this section isn't as simple
  * as the standard library
  *********************************************************************/
-typedef NTPSock struct NTPSock_struct;
+typedef struct NTPSock_struct NTPSock;
 
 /**Since it will be work to make this platform independent, we might as
  * well make some porcelain commands. 99% of the time I just want to
@@ -117,7 +117,7 @@ int NTPRecv(NTPSock *sock, void *buf, int len);
 
 /**Select is useful enough to include here, even if it is
  * the most confusing function ever written.*/
-typedef NTP_FD_SET struct NTP_FD_SET_struct;
+typedef struct NTP_FD_SET_struct NTP_FD_SET;
 void NTP_FD_ADD(NTPSock *sock, NTP_FD_SET *set);
 BOOL NTP_FD_ISSET(NTPSock *sock, NTP_FD_SET *set);
 //clears a NTP_FD_SET()
@@ -155,7 +155,7 @@ int NTPSelect(NTP_FD_SET *readSet, NTP_FD_SET *writeSet, int timeoutMS);
  * all you really want if you're trying to avoid bugs.
  ************************************************************************/
 
-typedef NTPLock struct NTPLock_struct;
+typedef struct NTPLock_struct NTPLock;
 
 /**Creates a new thread, returns TRUE on SUCCESS, FALSE on ERROR.
  * The new thread calls start_routing() upon starting, which is a
