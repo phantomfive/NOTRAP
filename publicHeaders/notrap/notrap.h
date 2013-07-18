@@ -79,7 +79,7 @@ typedef struct NTPSock_struct NTPSock;
  * Returns a new sock immediately, before the connection is complete,
  * because DNS lookup can take minutes. To discover the status of the
  * connection, call NTPSockStatus()*/
-NTPSock *NTPConnectTCP(const char *destination);
+NTPSock *NTPConnectTCP(const char *destination, uint16_t port);
 
 //Returns the current status of the socket. This is especially
 //useful during connection, and should be called frequently, because
@@ -171,7 +171,7 @@ typedef struct NTPLock_struct NTPLock;
  *       //success!
  *    }
  */
-BOOL NTPStartThread(void (*start_routine)(void *), void *arg);
+BOOL NTPStartThread(void *(*start_routine)(void *), void *arg);
 
 /**Creates a new lock. Returns NULL on error*/
 NTPLock *NTPNewLock();

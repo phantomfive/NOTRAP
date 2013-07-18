@@ -64,7 +64,7 @@ struct NTPSock_struct {
 
 //There's no reasonable way to do DNS lookups in a non-blocking way,
 //so we're going to simulate it with a single thread
-static void doLookupAndConnectInSeparateThread(void *obj) {
+static void *doLookupAndConnectInSeparateThread(void *obj) {
 	NTPSock *sock = (NTPSock*)obj;
 	struct addrinfo hints, *servinfo, *p;
 	int rv;
@@ -143,6 +143,8 @@ SIGNAL_CONNECTION_COMPLETE:
 		}
 	
 	} NTPReleaseLock(sock->connectLock);
+
+	return NULL;
 }
 
 //------------------------------------------------------------------
