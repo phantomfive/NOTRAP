@@ -8,6 +8,8 @@
 #include <notrap/notrap.h>
 #ifdef NTP_POSIX_THREADS
 
+#include <errno.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -65,6 +67,7 @@ struct NTPSock_struct {
 static void doLookupAndConnectInSeparateThread(void *obj) {
 	NTPSock *sock = (NTPSock*)obj;
 	struct addrinfo hints, *servinfo, *p;
+	int rv;
 	char port[50];
 
 	//Please Lord, may I never have to write one of these again.
@@ -92,7 +95,7 @@ static void doLookupAndConnectInSeparateThread(void *obj) {
 		}
 
 		//and if we got the socket, try to connect
-		if(connect(sockfd, p->ai_addr, p->ai_addrlen) <0) {
+		if(connect(sock->sock, p->ai_addr, p->ai_addrlen) <0) {
 			snprintf(sock->errMsg, sizeof(sock->errMsg), 
 			        "connect to %s failed, %s\n", sock->destination,strerror(errno));
 			sock->errMsg[sizeof(sock->errMsg)-1]=0;
@@ -167,7 +170,7 @@ static NTPSock *allocNTPSock(const char *destination, uint16_t port) {
 
 
 NTPSock *NTPConnectTCP(const char *destination, uint16_t port) {
-	NTPSock *rv = allocNTPSock(destination);
+	NTPSock *rv = allocNTPSock(destination, port);
 	if(rv==NULL) goto ERR_NO_MEM;
 
 	rv->connectLock = NTPNewLock();
@@ -206,14 +209,14 @@ void NTPDisconnect(NTPSock **sock) {
 	NTPAcquireLock(lock);
 	if((*sock)->doingConnect==YES) {
 		//we are still connecting, so tell our thread to free it
-		(*sock)->shouldInterrupConnect = YES;
+		(*sock)->shouldInterruptConnect = YES;
 		NTPReleaseLock(lock);
 	} else{
 		//we are no longer connecting, so we can free everything ourselves
 		NTPReleaseLock(lock);
 
 		//Here is where we actually free everything
-		NTPFreeLock(&(*sock)->lock);
+		NTPFreeLock(&(*sock)->connectLock);
 		if((*sock)->sock >=0) close((*sock)->sock);
 		free(*sock);
 	}
@@ -224,8 +227,6 @@ void NTPDisconnect(NTPSock **sock) {
 
 
 NTPSock*NTPListen(uint16_t port) {
-	struct sockaddr_storage their_addr;
-	socklen_t addr_size;
 	struct addrinfo hints, *servinfo, *p;
 	int ev;
 
@@ -233,11 +234,11 @@ NTPSock*NTPListen(uint16_t port) {
 	if(rv==NULL) return NULL;
 	rv->listenSock = TRUE;
 	
-	memset(&hints, 0, 0, sizeof(hints));
+	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
-	if((ev=getaddrinfo(NULL, port, &hints, &servinfo))!=0) {
+	if((ev=getaddrinfo(NULL, NULL, &hints, &servinfo))!=0) {
 		rv->listenError = TRUE;
 		snprintf(rv->errMsg, sizeof(rv->errMsg), "GetAddrInfo Err, %s",
 		         gai_strerror(ev));
@@ -271,7 +272,7 @@ NTPSock*NTPListen(uint16_t port) {
 }
 
 
-NTPSock *NTPAccept(NTPSock *listenSock) {
+NTPSock *NTPAccept(NTPSock *sock) {
 	int acceptedSock;
 	struct sockaddr address;
 	NTPSock *rv;
@@ -282,7 +283,7 @@ NTPSock *NTPAccept(NTPSock *listenSock) {
 		return NULL;
 	}
 	
-	acceptedSock = accept(listenSock->sock, &address, &address_len);
+	acceptedSock = accept(sock->sock, &address, &address_len);
 	if(acceptedSock<0) {
 		snprintf(sock->errMsg,sizeof(sock->errMsg),"accepting, %s",strerror(errno));
 		return NULL;
@@ -367,25 +368,25 @@ struct NTP_FD_SET_struct {
 };
 
 void NTP_ZERO_SET(NTP_FD_SET *set) {
-	memset(set, 0, sizeof(NTP_FD_SET_struct));
+	memset(set, 0, sizeof(struct NTP_FD_SET_struct));
 }
 
 void NTP_FD_ADD(NTPSock *sock, NTP_FD_SET *set) {
-	FD_SET(sock->sock, set->set);
+	FD_SET(sock->sock, &set->set);
 	if(sock->sock>set->max) 
 		set->max = sock->sock;
 }
 
 BOOL NTP_FD_ISSET(NTPSock *sock, NTP_FD_SET *set) {
-	return (BOOL)FD_ISSET(sock->sock, set->set);
+	return (BOOL)FD_ISSET(sock->sock, &set->set);
 }
 
 int NTPSelect(NTP_FD_SET *readSet, NTP_FD_SET *writeSet, int timeoutMS) {
 	struct timeval tv;
 	int max = (readSet->max>writeSet->max) ? readSet->max : writeSet->max;
 
-	tv->tv_sec  = timeoutMS / 1000;
-	tv->tv_usec = (timeoutMS%1000)*1000;
+	tv.tv_sec  = timeoutMS / 1000;
+	tv.tv_usec = (timeoutMS%1000)*1000;
 
 	return select(max + 1, &readSet->set, &writeSet->set, NULL, &tv);
 }
