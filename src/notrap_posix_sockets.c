@@ -231,16 +231,18 @@ void NTPDisconnect(NTPSock **sock) {
 NTPSock*NTPListen(uint16_t port) {
 	struct addrinfo hints, *servinfo, *p;
 	int ev;
+	char portStr[20];
 
 	NTPSock *rv = allocNTPSock("", port);
 	if(rv==NULL) return NULL;
 	rv->listenSock = TRUE;
 	
+	sprintf(portStr, "%d", port);
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
-	if((ev=getaddrinfo(NULL, NULL, &hints, &servinfo))!=0) {
+	if((ev=getaddrinfo(NULL, portStr, &hints, &servinfo))!=0) {
 		rv->listenError = TRUE;
 		snprintf(rv->errMsg, sizeof(rv->errMsg), "GetAddrInfo Err, %s",
 		         gai_strerror(ev));
@@ -265,8 +267,15 @@ NTPSock*NTPListen(uint16_t port) {
 
 		break;
 	}
-
 	freeaddrinfo(servinfo);
+	
+	if(listen(rv->sock, 100)<0) {
+		snprintf(rv->errMsg, sizeof(rv->errMsg), "couldn't listen, %s",
+		         strerror(errno));
+		close(rv->sock);
+		rv->sock = -1;
+	}
+
 	if(rv->sock==-1) {
 		rv->listenError = TRUE;
 	}

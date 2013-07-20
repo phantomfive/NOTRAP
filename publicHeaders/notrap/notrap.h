@@ -159,7 +159,7 @@ typedef struct NTPLock_struct NTPLock;
 
 /**Creates a new thread, returns TRUE on SUCCESS, FALSE on ERROR.
  * The new thread calls start_routing() upon starting, which is a
- * function you must define. Here is an example:
+ * function you must define. Here is an example, starting a thread:
  *
  * void myRoutine(void *arg) {
  *    //do things in a new thread
