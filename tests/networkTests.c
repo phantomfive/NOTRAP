@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <CuTest.h>
+#include <unistd.h>
 #include <notrap/notrap.h>
 
 void testDisconnectWhileConnecting(CuTest *tc) {
@@ -27,12 +28,20 @@ void testConnect(CuTest *tc) {
 	//Listen on sock
 	NTPSock *lSock = NTPListen(port);
 	CuAssertPtrNotNull(tc, lSock);
-	while(NTPSockStatus(lSock)==NTPSOCK_CONNECTING);
+	if(NTPSockStatus(lSock)!=NTPSOCK_LISTENING)
+		printf("Listen error: %s\n", NTPSockErr(lSock));
 	CuAssert(tc, "Make sure listening", NTPSockStatus(lSock)==NTPSOCK_LISTENING);
 
 	//connect to listening port
 	cSock = NTPConnectTCP("localhost", port);
 	CuAssertPtrNotNull(tc, cSock);
+	
+	//wait for connect to succeed or fail
+	while(NTPSockStatus(cSock)==NTPSOCK_CONNECTING);
+	if(NTPSockStatus(cSock)!=NTPSOCK_CONNECTED)
+		printf("Connect error: %s\n", NTPSockErr(cSock));
+	CuAssert(tc, "Testing connect", NTPSockStatus(cSock)==NTPSOCK_CONNECTED);
+
 	
 	//accept on listening port
 	newSock = NTPAccept(lSock);
@@ -41,7 +50,6 @@ void testConnect(CuTest *tc) {
 	//send a message
 	for(sent=0;sent<strlen(msg);sent+=bytesSent) {
 		bytesSent = NTPSend(cSock, msg, strlen(msg)-sent);
-		printf("Err: %s\n", NTPSockErr(cSock));
 		CuAssert(tc, "Checking bytes sent didn't fail", bytesSent>0);
 	}
 

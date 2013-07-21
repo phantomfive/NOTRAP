@@ -127,22 +127,23 @@ ERR:
 	//The alternative is still uglier.
 	sock->connectError = TRUE;	
 
-
 SIGNAL_CONNECTION_COMPLETE:
 	//Check to see if our connect got interrupted by a disconnect
 	//If it did, we need to cleanup ourselves.
-	NTPAcquireLock(sock->connectLock); {
+	NTPAcquireLock(sock->connectLock);  {
 
 		//The 'sock' is guaranteed to not be freed until
 		//this is set to NO. And it can only be set while
 		//we hold this lock.
 		sock->doingConnect = NO;
 		if(sock->shouldInterruptConnect==YES) {
+			NTPReleaseLock(sock->connectLock);
 			NTPDisconnect(&sock);
+		}
+		else{
 			NTPReleaseLock(sock->connectLock);
 		}
-	
-	} NTPReleaseLock(sock->connectLock);
+	}
 
 	return NULL;
 }
@@ -166,7 +167,14 @@ static NTPSock *allocNTPSock(const char *destination, uint16_t port) {
 		strncpy(rv->destination, destination, sizeof(rv->destination)-1);
 		rv->destination[sizeof(rv->destination)-1] = 0;
 		strcpy(rv->errMsg, "No error, yet");
+	
+		rv->connectLock = NTPNewLock();
+		if(rv->connectLock==NULL) {
+			free(rv);
+			rv = NULL;
+		}
 	}
+
 	return rv;
 }
 
@@ -175,12 +183,10 @@ NTPSock *NTPConnectTCP(const char *destination, uint16_t port) {
 	NTPSock *rv = allocNTPSock(destination, port);
 	if(rv==NULL) goto ERR_NO_MEM;
 
-	rv->connectLock = NTPNewLock();
-	if(rv->connectLock==NULL) goto ERR_CONNECT_LOCK;
 
 
 	//begin the asynchronous connect
-	rv->doingConnect = FALSE;
+	rv->doingConnect = TRUE;
 	if(!NTPStartThread(doLookupAndConnectInSeparateThread,rv))
 		goto ERR_START_THREAD;
 	
@@ -189,8 +195,6 @@ NTPSock *NTPConnectTCP(const char *destination, uint16_t port) {
 
 ERR_START_THREAD:
 	NTPFreeLock(&rv->connectLock);
-
-ERR_CONNECT_LOCK:
 	free(rv);
 	rv=NULL;
 
@@ -199,8 +203,8 @@ ERR_NO_MEM:
 }
 
 void NTPDisconnect(NTPSock **sock) {
-	NTPLock *lock = (*sock)->connectLock;
 	if(sock==NULL || *sock==NULL) return;
+	NTPLock *lock = (*sock)->connectLock;
 
 	//Complications always come when you're using threads,
 	//and here's ours. If we're connecting while the thread
@@ -216,12 +220,13 @@ void NTPDisconnect(NTPSock **sock) {
 	} else{
 		//we are no longer connecting, so we can free everything ourselves
 		NTPReleaseLock(lock);
-
+		
 		//Here is where we actually free everything
 		NTPFreeLock(&(*sock)->connectLock);
 		if((*sock)->sock >=0) close((*sock)->sock);
 		free(*sock);
 	}
+
 	//In either case, set *sock to NULL so the end user
 	//can't use it anymore.
 	*sock = NULL;
@@ -269,11 +274,19 @@ NTPSock*NTPListen(uint16_t port) {
 	}
 	freeaddrinfo(servinfo);
 	
-	if(listen(rv->sock, 100)<0) {
-		snprintf(rv->errMsg, sizeof(rv->errMsg), "couldn't listen, %s",
-		         strerror(errno));
-		close(rv->sock);
-		rv->sock = -1;
+	if(rv->sock>=0) {
+		//if this one fails, it's alright, can keep going
+		int optval = 1;
+		setsockopt(rv->sock, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+
+		//this one needs to work, though
+		if(listen(rv->sock, 100)<0) {
+			snprintf(rv->errMsg, sizeof(rv->errMsg), "couldn't listen, %s",
+		   	      strerror(errno));
+			close(rv->sock);
+			rv->sock = -1;
+		}
+
 	}
 
 	if(rv->sock==-1) {
