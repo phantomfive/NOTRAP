@@ -27,6 +27,10 @@
 #include "notrap_osx.h"
 #endif
 
+#ifdef NTP_POSIX_SOCKETS
+#include "notrap_posix_sockets.h"
+#endif
+
 //The standard library is not available on all platforms.
 //But when it is, we can just use these functions directly.
 //All these will be the same as the normal stdlib, but

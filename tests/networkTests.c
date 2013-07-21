@@ -110,7 +110,7 @@ static void testRecvFail(CuTest *tc) {
 	result = NTPRecv(acceptSock, buf, sizeof(buf));
 	CuAssert(tc, "recv should fail", result<=0);
 
-
+	//cleanup
 	NTPDisconnect(&listenSock);
 	NTPDisconnect(&acceptSock);
 	CuAssert(tc, "disconnect NULL", listenSock==NULL);
@@ -132,17 +132,77 @@ static void testSendFail(CuTest *tc) {
 	NTPDisconnect(&acceptSock);
 	CuAssert(tc, "disconnect to NULL", acceptSock==NULL);
 
-	//try to send() on the other socket
+	//try to send() on the other socket. Keep trying
+	//because it doesn't always fail the first time.
 	int i;
-	for(i=0;i<10;i++) {
+	for(i=0;i<20;i++) {
 		result = NTPSend(connectSock, buf, NTPstrlen(buf));
 	}
 	CuAssert(tc, "Send should fail", result<=0);
 
+	//cleanup
 	NTPDisconnect(&listenSock);
 	NTPDisconnect(&connectSock);
 	CuAssert(tc, "disconnect NULL", listenSock==NULL);
 	CuAssert(tc, "disconnect NULL", acceptSock==NULL);
+}
+
+static void testSelect(CuTest *tc) {
+	NTPSock *listenSock;
+	NTPSock *acceptSock;
+	NTPSock *connectSock;
+	NTP_FD_SET readSet, writeSet;
+	uint16_t port = 45643;
+	char buf[] = "and the poor ones who loved you so true.";
+
+	//begin listen
+	listenSock = NTPListen(port);
+	CuAssertPtrNotNull(tc, listenSock);
+	CuAssert(tc, "listening", NTPSockStatus(listenSock)==NTPSOCK_LISTENING);
+	
+	//connect
+	connectSock = NTPConnectTCP("localhost", port);
+	CuAssertPtrNotNull(tc, connectSock);
+	
+	//use select to make sure select on an accept sock
+	//at least kind of works
+	NTP_ZERO_SET(&readSet);
+	NTP_FD_ADD(listenSock, &readSet);
+	     CuAssert(tc,"select listen", 
+	NTPSelect(&readSet, NULL, 10000)>0
+	     );
+	CuAssert(tc, "isset", NTP_FD_ISSET(listenSock, &readSet));
+	acceptSock = NTPAccept(listenSock);
+	CuAssertPtrNotNull(tc, acceptSock);
+
+	//now make sure a write select kind of works
+	NTP_ZERO_SET(&writeSet);
+	NTP_FD_ADD(connectSock, &writeSet);
+	    CuAssert(tc, "select write",
+	NTPSelect(NULL, &writeSet, 10000)>0
+	    );
+	CuAssert(tc, "isset", NTP_FD_ISSET(connectSock, &writeSet));
+	    CuAssert(tc, "write at least one byte",
+	NTPSend(connectSock, buf, strlen(buf))
+	    );
+	
+	//test a read select for timeout
+	NTP_ZERO_SET(&readSet);
+	CuAssert(tc, "zero worked", !NTP_FD_ISSET(listenSock, &readSet));
+	NTP_FD_ADD(connectSock, &readSet);
+		 CuAssert(tc, "select timeout",
+	NTPSelect(&readSet, NULL, 100)==0
+	    );
+	
+
+	//cleanup
+	NTPDisconnect(&listenSock);
+	NTPDisconnect(&connectSock);
+	NTPDisconnect(&acceptSock);
+
+	CuAssert(tc, "should be NULL", listenSock==NULL);
+	CuAssert(tc, "should be NULL", connectSock==NULL);
+	CuAssert(tc, "should be NULL", acceptSock==NULL);
 }
 
 CuSuite *getNetworkSuite(void) {
@@ -152,5 +212,7 @@ CuSuite *getNetworkSuite(void) {
 	SUITE_ADD_TEST(suite, testConnectSendRecv);
 	SUITE_ADD_TEST(suite, testRecvFail);
 	SUITE_ADD_TEST(suite, testSendFail);
+	SUITE_ADD_TEST(suite, testSelect);
 	return suite;
 }
+

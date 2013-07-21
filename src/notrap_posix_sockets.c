@@ -402,10 +402,7 @@ int NTPRecv(NTPSock *sock, void *buf, int len) {
 //------------------------------------------------------------------
 // Methods for select
 //------------------------------------------------------------------
-struct NTP_FD_SET_struct {
-	fd_set set;
-	uint16_t max;
-};
+//If you're interested in NTP_FD_SET, it's defined in notrap_posix_sockets.h
 
 void NTP_ZERO_SET(NTP_FD_SET *set) {
 	memset(set, 0, sizeof(struct NTP_FD_SET_struct));
@@ -418,17 +415,27 @@ void NTP_FD_ADD(NTPSock *sock, NTP_FD_SET *set) {
 }
 
 BOOL NTP_FD_ISSET(NTPSock *sock, NTP_FD_SET *set) {
-	return (BOOL)FD_ISSET(sock->sock, &set->set);
+	return (FD_ISSET(sock->sock, &set->set)!=0);
 }
 
 int NTPSelect(NTP_FD_SET *readSet, NTP_FD_SET *writeSet, int timeoutMS) {
 	struct timeval tv;
-	int max = (readSet->max>writeSet->max) ? readSet->max : writeSet->max;
+	int max;
+	fd_set *wSet=NULL, *rSet=NULL;
+
+	if(readSet!=NULL && writeSet!=NULL)
+		max = (readSet->max>writeSet->max) ? readSet->max : writeSet->max;
+	else if(readSet!=NULL)  
+		max = readSet->max;
+	else if(writeSet!=NULL) 
+		max = writeSet->max;
 
 	tv.tv_sec  = timeoutMS / 1000;
 	tv.tv_usec = (timeoutMS%1000)*1000;
 
-	return select(max + 1, &readSet->set, &writeSet->set, NULL, &tv);
+	if(readSet!=NULL)  rSet = &readSet ->set; 
+	if(writeSet!=NULL) wSet = &writeSet->set;
+	return select(max + 1, rSet, wSet, NULL, &tv);
 }
 
 
