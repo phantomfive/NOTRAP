@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <notrap/notrap.h>
 
-void testDisconnectWhileConnecting(CuTest *tc) {
+static void testDisconnectWhileConnecting(CuTest *tc) {
 	int i;
 
 	//Since this is threaded on some platforms,
@@ -17,7 +17,7 @@ void testDisconnectWhileConnecting(CuTest *tc) {
 	}
 }
 
-void testConnect(CuTest *tc) {
+static void testConnectSendRecv(CuTest *tc) {
 	int port = 34593;
 	int sent,bytesSent, recvd, bytesRecvd;
 	char msg[] = "From this valley they say you are going";
@@ -69,10 +69,88 @@ void testConnect(CuTest *tc) {
 	CuAssert(tc,"disconnect check", lSock==NULL && cSock==NULL && newSock==NULL);
 }
 
+
+//function that connects two sockets together, useful for other tests
+static void connectUtil(CuTest *tc, NTPSock**listenSock, NTPSock**connectSock,
+                                    NTPSock**acceptedSock, uint16_t port) {
+
+	//listen
+	*listenSock = NTPListen(port);
+	CuAssertPtrNotNull(tc, *listenSock);
+	CuAssert(tc, "Listen failed", NTPSockStatus(*listenSock)==NTPSOCK_LISTENING);
+
+	//connect
+	*connectSock = NTPConnectTCP("localhost", port);
+	CuAssertPtrNotNull(tc, *connectSock);
+	while(NTPSockStatus(*connectSock)==NTPSOCK_CONNECTING);
+	CuAssert(tc,"Connect fail",NTPSockStatus(*connectSock)==NTPSOCK_CONNECTED);
+
+	//accept
+	*acceptedSock = NTPAccept(*listenSock);
+	CuAssertPtrNotNull(tc, *acceptedSock);
+	CuAssert(tc, "Accept fail", NTPSockStatus(*acceptedSock)==NTPSOCK_CONNECTED);
+}
+
+static void testRecvFail(CuTest *tc) {
+	NTPSock*listenSock;
+	NTPSock*connectSock;
+	NTPSock*acceptSock;
+	char buf[20];
+	int result;
+	uint16_t port = 38712;
+
+	//connect the sockets
+	connectUtil(tc, &listenSock, &connectSock, &acceptSock, port);
+	
+	//close one socket
+	NTPDisconnect(&connectSock);
+	CuAssert(tc, "disconnect to NULL", connectSock==NULL);
+
+	//try to recv() on the other socket
+	result = NTPRecv(acceptSock, buf, sizeof(buf));
+	CuAssert(tc, "recv should fail", result<=0);
+
+
+	NTPDisconnect(&listenSock);
+	NTPDisconnect(&acceptSock);
+	CuAssert(tc, "disconnect NULL", listenSock==NULL);
+	CuAssert(tc, "disconnect NULL", acceptSock==NULL);
+}
+
+static void testSendFail(CuTest *tc) {
+	NTPSock *listenSock;
+	NTPSock *connectSock;
+	NTPSock *acceptSock;
+	char buf[] = "So remember, remember the Red River Valley";
+	int result;
+	uint16_t port = 23551;
+
+	//connect the sockets
+	connectUtil(tc, &listenSock, &connectSock, &acceptSock, port);
+
+	//close one socket
+	NTPDisconnect(&acceptSock);
+	CuAssert(tc, "disconnect to NULL", acceptSock==NULL);
+
+	//try to send() on the other socket
+	int i;
+	for(i=0;i<10;i++) {
+		result = NTPSend(connectSock, buf, NTPstrlen(buf));
+	}
+	CuAssert(tc, "Send should fail", result<=0);
+
+	NTPDisconnect(&listenSock);
+	NTPDisconnect(&connectSock);
+	CuAssert(tc, "disconnect NULL", listenSock==NULL);
+	CuAssert(tc, "disconnect NULL", acceptSock==NULL);
+}
+
 CuSuite *getNetworkSuite(void) {
 	CuSuite *suite = CuSuiteNew();
 
 	SUITE_ADD_TEST(suite, testDisconnectWhileConnecting);
-	SUITE_ADD_TEST(suite, testConnect);
+	SUITE_ADD_TEST(suite, testConnectSendRecv);
+	SUITE_ADD_TEST(suite, testRecvFail);
+	SUITE_ADD_TEST(suite, testSendFail);
 	return suite;
 }

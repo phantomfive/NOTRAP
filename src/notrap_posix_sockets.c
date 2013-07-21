@@ -8,6 +8,7 @@
 #include <notrap/notrap.h>
 #ifdef NTP_POSIX_THREADS
 
+#include <signal.h>
 #include <errno.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -57,6 +58,18 @@ struct NTPSock_struct {
 };
 
 
+//-----------------------------------------------------------------
+// Function for initializing general networking. Only gets run
+// once the first time a socket is created.
+// Mainly we use it to handle SIGPIPE
+//-----------------------------------------------------------------
+static BOOL networkInitialized = FALSE;
+static void initNetwork() {
+	if(networkInitialized) return;
+	
+	signal(SIGPIPE, SIG_IGN);
+	networkInitialized = TRUE;
+}
 
 //------------------------------------------------------------------
 // Functions for doing DNS Lookup. This is insane
@@ -155,6 +168,8 @@ SIGNAL_CONNECTION_COMPLETE:
 /**Allocates memory for an NTPSock and fills it in with some
  * good defaults.*/
 static NTPSock *allocNTPSock(const char *destination, uint16_t port) {
+	initNetwork();
+
 	NTPSock *rv = (NTPSock*)malloc(sizeof(NTPSock));
 	if(rv!=NULL) {
 		rv->shouldInterruptConnect = FALSE;
@@ -256,11 +271,15 @@ NTPSock*NTPListen(uint16_t port) {
 
 	rv->sock = -1;
 	for(p=servinfo; p!=NULL; p = p->ai_next) {
+		int optval = 1;
 		if((rv->sock = socket(p->ai_family, p->ai_socktype, p->ai_protocol))<0) {
 			snprintf(rv->errMsg, sizeof(rv->errMsg), "Socket not created, %s",
 			         strerror(errno));
 			continue;
 		}
+
+		//if this one fails, it's alright, can keep going
+		setsockopt(rv->sock, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
 
 		if(bind(rv->sock, p->ai_addr, p->ai_addrlen) <0) {
 			snprintf(rv->errMsg, sizeof(rv->errMsg), "Couldn't bind, %s",
@@ -275,9 +294,6 @@ NTPSock*NTPListen(uint16_t port) {
 	freeaddrinfo(servinfo);
 	
 	if(rv->sock>=0) {
-		//if this one fails, it's alright, can keep going
-		int optval = 1;
-		setsockopt(rv->sock, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
 
 		//this one needs to work, though
 		if(listen(rv->sock, 100)<0) {
