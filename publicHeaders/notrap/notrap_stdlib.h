@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #define NTPmalloc malloc
+#define NTPfree   free
 #define NTPstrlen strlen
 #define NTPmemcpy memcpy
 #define NTPstrcpy strcpy

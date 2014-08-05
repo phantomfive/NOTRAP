@@ -70,6 +70,13 @@
 #endif
 
 /**********************************************************************
+ * Section for utility functions
+ **********************************************************************/
+time_t NTPcurrentTimeMillis();
+
+
+
+/**********************************************************************
  * Sections for networking. These can't be POSIX because Windows
  * doesn't have true POSIX networking. So this section isn't as simple
  * as the standard library
@@ -82,12 +89,11 @@ typedef struct NTPSock_struct NTPSock;
  * this function does.
  * Returns a new sock immediately, before the connection is complete,
  * because DNS lookup can take minutes. To discover the status of the
- * connection, call NTPSockStatus()*/
+ * connection, call NTPSockStatus(). Can return NULL if no memory.*/
 NTPSock *NTPConnectTCP(const char *destination, uint16_t port);
 
 //Returns the current status of the socket. This is especially
-//useful during connection, and should be called frequently, because
-//it's where the connect actually does its work.
+//useful during connection.
 //Returns one of the following:
 #define NTPSOCK_CONNECTING   1 //If it is still connecting
 #define NTPSOCK_CONNECTED    2 //If it has connected
@@ -96,7 +102,8 @@ NTPSock *NTPConnectTCP(const char *destination, uint16_t port);
                                //For a string representation of the error.
 int NTPSockStatus(NTPSock *sock); 
 
-/**Returns a human readable error message to represent the last error.*/
+/**Returns a human readable error message to represent the last error.
+ * sock can be NULL, which might possibly yield a more general error*/
 const char*NTPSockErr(NTPSock*sock);
 
 /**Disconnects the sock and frees all associated resources.
@@ -163,9 +170,10 @@ typedef struct NTPLock_struct NTPLock;
 
 /**Creates a new thread, returns TRUE on SUCCESS, FALSE on ERROR.
  * The new thread calls start_routing() upon starting, which is a
- * function you must define. Here is an example, starting a thread:
+ * function you must define. 
+ * Here is an example, starting a thread:
  *
- * void myRoutine(void *arg) {
+ * void *myRoutine(void *arg) {
  *    //do things in a new thread
  * }
  *

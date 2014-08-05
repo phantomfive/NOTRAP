@@ -420,7 +420,7 @@ BOOL NTP_FD_ISSET(NTPSock *sock, NTP_FD_SET *set) {
 
 int NTPSelect(NTP_FD_SET *readSet, NTP_FD_SET *writeSet, int timeoutMS) {
 	struct timeval tv;
-	int max;
+	int max = 0;
 	fd_set *wSet=NULL, *rSet=NULL;
 
 	if(readSet!=NULL && writeSet!=NULL)
