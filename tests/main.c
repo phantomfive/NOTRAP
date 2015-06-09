@@ -23,7 +23,7 @@ int runAllTests(void) {
 
 	CuStringDelete(output);
 	CuSuiteDelete(suite);
-	return 0;
+	return rv;
 }
 
 int main(void) {

@@ -27,6 +27,13 @@
 #include "notrap_osx.h"
 #endif
 
+#ifdef __CYGWIN__
+#define NTP_CYGWIN
+#define NTP_STDLIB_AVAILABLE
+#define NTP_POSIX_SOCKETS
+#define NTP_POSIX_THREADS
+#endif
+
 #ifdef NTP_POSIX_SOCKETS
 #include "notrap_posix_sockets.h"
 #endif

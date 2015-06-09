@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <CuTest.h>
 #include <unistd.h>
 #include <notrap/notrap.h>
@@ -48,13 +47,15 @@ static void testConnectSendRecv(CuTest *tc) {
 	CuAssertPtrNotNull(tc, newSock);
 
 	//send a message
+	bytesSent = 0;
 	for(sent=0;sent<strlen(msg);sent+=bytesSent) {
 		bytesSent = NTPSend(cSock, msg, strlen(msg)-sent);
 		CuAssert(tc, "Checking bytes sent didn't fail", bytesSent>0);
 	}
 
 	//recv the message
-	for(recvd=0;recvd<strlen(msg);recvd+=bytesSent) {
+	bytesRecvd = 0;
+	for(recvd=0;recvd<strlen(msg);recvd+=bytesRecvd) {
 		bytesRecvd = NTPRecv(newSock, msgRecv+recvd, strlen(msg)-recvd);
 		CuAssert(tc, "Checking recv didn't fail", bytesRecvd>0);
 	}
